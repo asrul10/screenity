@@ -126,7 +126,8 @@ $(document).ready(function(){
     }
     
     // Get available camera devices
-    chrome.tabs.getSelected(null, function(tab) {
+            chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
         chrome.tabs.sendMessage(tab.id, {
             type: "camera-request"
         });
@@ -333,7 +334,8 @@ $(document).ready(function(){
                 $("#record").removeClass("record-disabled");
             }
         } else if (request.type == "sources-loaded") {
-            chrome.tabs.getSelected(null, function(tab) {
+                    chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "camera-request"
                 });

@@ -92,7 +92,8 @@ function endRecording(stream, recordedBlobs) {
     
     // Hide injected content
     recording = false;
-    chrome.tabs.getSelected(null, function(tab) {
+    chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+        let tab = tabs[0];
         chrome.tabs.sendMessage(tab.id, {
             type: "end"
         });
@@ -154,14 +155,15 @@ function getDesktop() {
         // Stop recording if stream is ended via Chrome UI or another method
         stream.getVideoTracks()[0].onended = function() {
             cancel = false;
-            mediaRecorder.stop();
+            endRecording(stream, recordedBlobs);
         }
     })
 }
 
 // Start recording the current tab
 function getTab() {
-    chrome.tabs.getSelected(null, function(tab) {
+    chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+        let tab = tabs[0];
         chrome.tabCapture.capture({
             video: true,
             audio: true,
@@ -277,7 +279,8 @@ function record() {
 // Inject content script
 function injectContent(start) {
     chrome.storage.sync.get(['countdown'], function(result) {
-        chrome.tabs.getSelected(null, function(tab) {
+        chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
             if (maintabs.indexOf(tab.id) == -1 && recording_type != "camera-only") {
                 // Inject content if it's not a camera recording and the script hasn't been injected before in this tab
                 tabid = tab.id;
@@ -380,7 +383,7 @@ function injectContent(start) {
                     }
                 }
             }
-        })
+        });
     })
 }
 
@@ -405,7 +408,8 @@ function updateMicrophone(id, request) {
             });
 
             // Start a new microphone stream using the provided device ID
-            chrome.tabs.getSelected(null, function(tab) {
+            chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+                let tab = tabs[0];
                 navigator.mediaDevices.getUserMedia({
                     audio: {
                         deviceId: id
@@ -439,7 +443,8 @@ function stopRecording(save) {
     // Show default icon
     chrome.browserAction.setIcon({path: "../assets/extension-icons/logo-32.png"});
     
-    chrome.tabs.getSelected(null, function(tab) {
+        chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
         // Check if recording has to be saved or discarded
         if (save == "stop" || save == "stop-save") {
             cancel = false;
@@ -491,7 +496,8 @@ function audioSwitch(source, enable) {
     if (recording_type != "camera-only") {
         // Start a new microphone stream if one doesn't exist already
         if (!micable) {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 navigator.mediaDevices.getUserMedia({
                     audio: true
                 }).then(function(mic) {
@@ -516,7 +522,8 @@ function audioSwitch(source, enable) {
             syssource.connect(destination);
         }
     } else {
-        chrome.tabs.getSelected(null, function(tab) {
+            chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
             chrome.tabs.sendMessage(tab.id, {
                 type: "mic-switch",
                 enable: enable
@@ -527,7 +534,8 @@ function audioSwitch(source, enable) {
 
 // Update camera device
 function updateCamera(request) {
-    chrome.tabs.getSelected(null, function(tab) {
+        chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
         // Save user preference
         chrome.storage.sync.set({
             camera: request.id
@@ -543,7 +551,8 @@ function updateCamera(request) {
 
 // Toggle push to talk
 function pushToTalk(request, id) {
-    chrome.tabs.getSelected(null, function(tab) {
+        chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
         pushtotalk = request.enabled;
 
         // Send user preference to content script
@@ -557,7 +566,8 @@ function pushToTalk(request, id) {
 // Countdown is over / recording can start
 function countdownOver() {
     if (recording_type == "camera-only") {
-        chrome.tabs.getSelected(null, function(tab) {
+            chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
             chrome.tabs.sendMessage(tab.id, {
                 type: "camera-record"
             });
@@ -572,7 +582,8 @@ function countdownOver() {
 
 // Inject content when tab redirects while recording
 function pageUpdated(sender) {
-    chrome.tabs.getSelected(null, function(tab) {
+        chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
         if (sender.tab.id == tab.id) {
             if (recording && tab.id == tabid && recording_type == "tab-only") {
                 injectContent(false)
@@ -589,15 +600,14 @@ function pageUpdated(sender) {
 }
 
 // Changed tab selection
-chrome.tabs.onActivated.addListener(function(tabId, changeInfo, tab) {
+chrome.tabs.onActivated.addListener(function(tabId) {
+    const activeTabId = tabId.tabId;
     if (!recording) {
         // Hide injected content if the recording is already over
-        chrome.tabs.getSelected(null, function(tab) {
-            chrome.tabs.sendMessage(tab.id, {
-                type: "end"
-            });
+        chrome.tabs.sendMessage(activeTabId, {
+            type: "end"
         });
-    } else if (recording && recording_type == "desktop" && maintabs.indexOf(tabId) == -1) {
+    } else if (recording && recording_type == "desktop" && maintabs.indexOf(tabId.tabId) == -1) {
         // Inject content for entire desktop recordings (content should be on any tab)
         injectContent(false);
     }
@@ -620,7 +630,8 @@ chrome.commands.onCommand.addListener(function(command) {
         if (command == "stop") {
             stopRecording(command);
         } else if (command == "pause/resume") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "pause/resume"
                 });
@@ -628,7 +639,8 @@ chrome.commands.onCommand.addListener(function(command) {
         } else if (command == "cancel") {
             stopRecording(command);
         } else if (command == "mute/unmute" && !pushtotalk) {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "mute/unmute"
                 });
@@ -661,7 +673,8 @@ chrome.runtime.onMessage.addListener(
         } else if (request.type == "audio-switch") {
             audioSwitch(request.source, request.enable);
         } else if (request.type == "camera-list") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: request.type,
                     devices: request.devices,
@@ -669,7 +682,8 @@ chrome.runtime.onMessage.addListener(
                 });
             });
         } else if (request.type == "flip-camera") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: request.type,
                     enabled: request.enabled
@@ -678,7 +692,8 @@ chrome.runtime.onMessage.addListener(
         } else if (request.type == "push-to-talk") {
             pushtotalk(request);
         } else if (request.type == "switch-toolbar") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: request.type,
                     enabled: request.enabled
@@ -691,19 +706,22 @@ chrome.runtime.onMessage.addListener(
         } else if (request.type == "record-request") {
             sendResponse({recording: recording});
         } else if (request.type == "pause-camera") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "pause-camera"
                 });
             });
         } else if (request.type == "resume-camera") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "resume-record"
                 });
             });
         } else if (request.type == "no-camera-access") {
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "no-camera-access"
                 });
@@ -712,7 +730,8 @@ chrome.runtime.onMessage.addListener(
             getDeviceId();
         } else if (request.type == "end-camera-recording") {
             recording = false;
-            chrome.tabs.getSelected(null, function(tab) {
+                chrome.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+            let tab = tabs[0];
                 chrome.tabs.sendMessage(tab.id, {
                     type: "end-recording"
                 });
