@@ -273,11 +273,4 @@ $(document).ready(function(){
     $("#download-label").html(chrome.i18n.getMessage("download"));
     $("#share span").html(chrome.i18n.getMessage("save_drive"));
     $("#apply-trim").html(chrome.i18n.getMessage("apply"));
-    
-    // Automatically download when closing if the user hasn't downloaded the file
-    addEventListener("unload", function(event) {
-        if (!downloaded) {
-            download();
-        }
-    }, true);
 });
